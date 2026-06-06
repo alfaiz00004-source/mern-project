@@ -23,7 +23,7 @@ function Navbar() {
           {/* Logo / Brand */}
           <div className="shrink-0">
             <Link to="/home" className="text-xl font-bold text-indigo-600">
-              Product Hub
+              MERN Product Management System
             </Link>
           </div>
 
