@@ -27,23 +27,18 @@ function Products() {
   const [category, setCategory] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [sort, setSort] = useState("-createdAt");
-  const [minPrice, setMinPrice] = useState("");
-  const [maxPrice, setMaxPrice] = useState("");
   const [editingProduct, setEditingProduct] = useState(null);
 
+  // Load categories
   useEffect(() => {
     let ignore = false;
 
     const loadCategories = async () => {
       try {
         const data = await getProductCategories();
-        if (!ignore) {
-          setCategories(data.categories || []);
-        }
+        if (!ignore) setCategories(data.categories || []);
       } catch {
-        if (!ignore) {
-          setCategories([]);
-        }
+        if (!ignore) setCategories([]);
       }
     };
 
@@ -54,6 +49,7 @@ function Products() {
     };
   }, []);
 
+  // Load products
   useEffect(() => {
     let ignore = false;
 
@@ -65,12 +61,10 @@ function Products() {
         sort,
       };
 
-      if (minPrice) params.price_gte = minPrice;
-      if (maxPrice) params.price_lte = maxPrice;
-
       try {
         setLoading(true);
         setError("");
+
         const data = await getProducts(params);
 
         if (!ignore) {
@@ -79,12 +73,12 @@ function Products() {
         }
       } catch (error) {
         if (!ignore) {
-          setError(error.response?.data?.message || "Failed to fetch products");
+          setError(
+            error.response?.data?.message || "Failed to fetch products"
+          );
         }
       } finally {
-        if (!ignore) {
-          setLoading(false);
-        }
+        if (!ignore) setLoading(false);
       }
     };
 
@@ -93,28 +87,30 @@ function Products() {
     return () => {
       ignore = true;
     };
-  }, [currentPage, keyword, category, sort, minPrice, maxPrice, refreshKey]);
+  }, [currentPage, keyword, category, sort, refreshKey]);
 
+  // Search submit
   const applySearch = (event) => {
     event.preventDefault();
     setCurrentPage(1);
     setKeyword(searchText.trim());
   };
 
+  // Clear filters
   const clearFilters = () => {
     setSearchText("");
     setKeyword("");
     setCategory("");
     setSort("-createdAt");
-    setMinPrice("");
-    setMaxPrice("");
     setCurrentPage(1);
   };
 
+  // Refresh
   const refreshProducts = () => {
     setRefreshKey((key) => key + 1);
   };
 
+  // Delete product
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure?")) return;
 
@@ -126,6 +122,7 @@ function Products() {
     }
   };
 
+  // Generic filter handler
   const updateFilter = (setter) => (event) => {
     setter(event.target.value);
     setCurrentPage(1);
@@ -140,7 +137,7 @@ function Products() {
       {isAdmin && (
         <div className="flex justify-center mb-4">
           <button
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition duration-200"
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg"
             onClick={() => setEditingProduct({})}
           >
             Create Product
@@ -148,28 +145,32 @@ function Products() {
         </div>
       )}
 
-      <div className="max-w-4xl mx-auto bg-white border border-gray-200 rounded-lg p-4">
-        <form onSubmit={applySearch} className="flex flex-col sm:flex-row gap-3 mb-4">
+      {/* Filters */}
+      <div className="max-w-4xl mx-auto bg-white border rounded-lg p-4">
+        <form
+          onSubmit={applySearch}
+          className="flex flex-col sm:flex-row gap-3 mb-4"
+        >
           <input
             type="text"
             value={searchText}
-            onChange={(event) => setSearchText(event.target.value)}
+            onChange={(e) => setSearchText(e.target.value)}
             placeholder="Search products..."
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:outline-none"
+            className="flex-1 px-4 py-2 border rounded-lg"
           />
           <button
             type="submit"
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition duration-200"
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg"
           >
             Search
           </button>
         </form>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <select
             value={category}
             onChange={updateFilter(setCategory)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:outline-none"
+            className="px-4 py-2 border rounded-lg"
           >
             <option value="">All Categories</option>
             {categories.map((item) => (
@@ -182,7 +183,7 @@ function Products() {
           <select
             value={sort}
             onChange={updateFilter(setSort)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:outline-none"
+            className="px-4 py-2 border rounded-lg"
           >
             <option value="-createdAt">Newest</option>
             <option value="createdAt">Oldest</option>
@@ -192,38 +193,21 @@ function Products() {
             <option value="-name">Name Z to A</option>
           </select>
 
-          <input
-            type="number"
-            min="0"
-            value={minPrice}
-            onChange={updateFilter(setMinPrice)}
-            placeholder="Min price"
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:outline-none"
-          />
-
-          <input
-            type="number"
-            min="0"
-            value={maxPrice}
-            onChange={updateFilter(setMaxPrice)}
-            placeholder="Max price"
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:outline-none"
-          />
-
           <button
             type="button"
             onClick={clearFilters}
-            className="px-4 py-2 border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 rounded-lg transition duration-200"
+            className="px-4 py-2 border bg-white hover:bg-gray-100 rounded-lg"
           >
             Clear
           </button>
         </div>
       </div>
 
+      {/* Content */}
       {loading ? (
-        <div className="mt-6">
+        <div className="mt-6 text-center">
           <Loader />
-          <p className="text-center text-gray-500">Loading products...</p>
+          <p className="text-gray-500">Loading products...</p>
         </div>
       ) : error ? (
         <p className="text-center text-red-500 mt-6">{error}</p>
@@ -255,6 +239,7 @@ function Products() {
         </>
       )}
 
+      {/* Modal */}
       {editingProduct && (
         <Modal onClose={() => setEditingProduct(null)}>
           <ProductForm
