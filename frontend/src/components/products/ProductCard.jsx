@@ -12,14 +12,13 @@ const FALLBACK_IMAGE =
 
 function ProductCard({ product, onEdit, onDelete, deleting = false, canManage = false }) {
   const handleDelete = () => {
-    if (!onDelete) return;
-    const id = product?._id || product?.id;
-    onDelete(id);
+    if (onDelete) {
+      onDelete(product?._id || product?.id);
+    }
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-200">
-      {/* Product Image */}
+    <div className="bg-white border border-gray-200 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-200">
       <div className="h-48 w-full overflow-hidden">
         <img
           src={product?.image || FALLBACK_IMAGE}
@@ -28,33 +27,36 @@ function ProductCard({ product, onEdit, onDelete, deleting = false, canManage = 
         />
       </div>
 
-      {/* Product Info */}
       <div className="p-4 space-y-2">
         <h3 className="text-lg font-semibold text-gray-800">{product.name}</h3>
         <p className="text-gray-600 text-sm line-clamp-2">{product.description}</p>
         <p className="text-indigo-600 font-bold text-lg">${product.price}</p>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex justify-end space-x-2 px-4 pb-4">
-        {canManage && onEdit && (
-          <button
-            onClick={() => onEdit(product)}
-            className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg transition duration-200"
-          >
-            Edit
-          </button>
-        )}
-        {canManage && onDelete && (
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition duration-200 disabled:opacity-50"
-          >
-            {deleting ? "Deleting..." : "Delete"}
-          </button>
-        )}
-      </div>
+      {canManage && (
+        <div className="flex justify-end gap-2 px-4 pb-4">
+          {onEdit && (
+            <button
+              type="button"
+              onClick={() => onEdit(product)}
+              className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg transition duration-200"
+            >
+              Edit
+            </button>
+          )}
+
+          {onDelete && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition duration-200 disabled:opacity-50"
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

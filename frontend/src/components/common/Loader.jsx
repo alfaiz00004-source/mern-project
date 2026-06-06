@@ -1,4 +1,3 @@
-// src/components/ui/Loader.jsx
 export default function Loader({ variant = "page", className = "" }) {
   const isInline = variant === "inline";
   const sizeClasses = isInline ? "w-6 h-6 border-2" : "w-12 h-12 border-4";

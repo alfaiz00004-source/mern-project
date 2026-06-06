@@ -1,3 +1,4 @@
+import { useContext } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Navbar from "./components/layout/Navbar";
 import Login from "./pages/Login";
@@ -10,7 +11,6 @@ import CreateProduct from "./pages/CreateProduct";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import PublicRoute from "./routes/PublicRoute";
 import AdminRoute from "./routes/AdminRoute";
-import { useContext } from "react";
 import { AuthContext } from "./context/AuthContext";
 
 function App() {
@@ -18,13 +18,10 @@ function App() {
 
   return (
     <>
-      {/* Navbar visible on all pages */}
       <Navbar />
 
-      {/* Page Content */}
       <div className="pt-16 bg-gray-50 min-h-screen">
         <Routes>
-          {/* PUBLIC ROUTES */}
           <Route
             path="/login"
             element={
@@ -42,7 +39,6 @@ function App() {
             }
           />
 
-          {/* PROTECTED ROUTES */}
           <Route
             path="/home"
             element={
@@ -76,7 +72,6 @@ function App() {
             }
           />
 
-          {/* DEFAULT / CATCH-ALL */}
           <Route
             path="*"
             element={<Navigate to={user ? "/home" : "/login"} replace />}

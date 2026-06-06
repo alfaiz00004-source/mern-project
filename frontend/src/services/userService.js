@@ -1,14 +1,21 @@
 import api from "./api";
 
-// REGISTER USER
-export const registerUser = (userData) => api.post("/user/register", userData);
+export const registerUser = async (userData) => {
+  const { data } = await api.post("/user/register", userData);
+  return data;
+};
 
-// LOGIN USER
-export const loginUser = (userData) => api.post("/user/login", userData);
+export const loginUser = async (userData) => {
+  const { data } = await api.post("/user/login", userData);
+  return data;
+};
 
-// GET USER PROFILE
-export const getUserProfile = () => api.get("/user/profile");
+export const getUserProfile = async () => {
+  const { data } = await api.get("/user/profile");
+  return data;
+};
 
-// UPDATE USER PROFILE
-export const updateUserProfile = (updates) =>
-  api.put("/user/profile", updates);
+export const updateUserProfile = async (updates) => {
+  const { data } = await api.put("/user/profile", updates);
+  return data;
+};

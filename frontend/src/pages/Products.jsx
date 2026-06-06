@@ -1,79 +1,134 @@
 import { useContext, useEffect, useState } from "react";
 import ProductCard from "../components/products/ProductCard";
-import SearchBar from "../components/ui/SearchBar";
 import Pagination from "../components/ui/Pagination";
-import { useProducts } from "../hooks/useProduct";
-import { useDebounce } from "../hooks/useDebounce";
 import { AuthContext } from "../context/AuthContext";
-import Modal from "../components/common/Model";
+import Modal from "../components/common/Modal";
 import ProductForm from "../components/products/ProductForm";
 import Loader from "../components/common/Loader";
-
-// NEW: modular filters
-import CategoryFilter from "../components/ui/CategoryFilter";
-import SortFilter from "../components/ui/SortFilter";
-import PriceFilter from "../components/ui/PriceFilter";
+import {
+  deleteProduct,
+  getProductCategories,
+  getProducts,
+} from "../services/productService";
 
 function Products() {
   const { user } = useContext(AuthContext);
   const isAdmin = user?.role === "admin";
-  const {
-    products,
-    pages,
-    categories: categoryList,
-    loading,
-    error,
-    fetchProducts,
-    fetchCategories,
-    deleteProductById,
-  } = useProducts();
 
-  const [searchValue, setSearchValue] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("");
+  const [products, setProducts] = useState([]);
+  const [pages, setPages] = useState(1);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const [searchText, setSearchText] = useState("");
+  const [keyword, setKeyword] = useState("");
+  const [category, setCategory] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [sortValue, setSortValue] = useState("-createdAt");
+  const [sort, setSort] = useState("-createdAt");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [editingProduct, setEditingProduct] = useState(null);
 
-  const debouncedSearch = useDebounce(searchValue, 400);
-
   useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
+    let ignore = false;
 
-  useEffect(() => {
-    const params = {
-      page: currentPage,
-      keyword: debouncedSearch,
-      category: selectedCategory,
-      sort: sortValue,
+    const loadCategories = async () => {
+      try {
+        const data = await getProductCategories();
+        if (!ignore) {
+          setCategories(data.categories || []);
+        }
+      } catch {
+        if (!ignore) {
+          setCategories([]);
+        }
+      }
     };
-    if (minPrice) params.price_gte = Number(minPrice);
-    if (maxPrice) params.price_lte = Number(maxPrice);
-    fetchProducts(params);
-  }, [
-    currentPage,
-    debouncedSearch,
-    selectedCategory,
-    sortValue,
-    minPrice,
-    maxPrice,
-    fetchProducts,
-  ]);
 
-  const handleSearch = (e) => {
-    if (e?.preventDefault) e.preventDefault();
+    loadCategories();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let ignore = false;
+
+    const loadProducts = async () => {
+      const params = {
+        page: currentPage,
+        keyword,
+        category,
+        sort,
+      };
+
+      if (minPrice) params.price_gte = minPrice;
+      if (maxPrice) params.price_lte = maxPrice;
+
+      try {
+        setLoading(true);
+        setError("");
+        const data = await getProducts(params);
+
+        if (!ignore) {
+          setProducts(data.products || []);
+          setPages(data.totalPages || 1);
+        }
+      } catch (error) {
+        if (!ignore) {
+          setError(error.response?.data?.message || "Failed to fetch products");
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadProducts();
+
+    return () => {
+      ignore = true;
+    };
+  }, [currentPage, keyword, category, sort, minPrice, maxPrice, refreshKey]);
+
+  const applySearch = (event) => {
+    event.preventDefault();
     setCurrentPage(1);
-    const params = {
-      page: 1,
-      keyword: searchValue,
-      category: selectedCategory,
-      sort: sortValue,
-    };
-    if (minPrice) params.price_gte = Number(minPrice);
-    if (maxPrice) params.price_lte = Number(maxPrice);
-    fetchProducts(params);
+    setKeyword(searchText.trim());
+  };
+
+  const clearFilters = () => {
+    setSearchText("");
+    setKeyword("");
+    setCategory("");
+    setSort("-createdAt");
+    setMinPrice("");
+    setMaxPrice("");
+    setCurrentPage(1);
+  };
+
+  const refreshProducts = () => {
+    setRefreshKey((key) => key + 1);
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure?")) return;
+
+    try {
+      await deleteProduct(id);
+      refreshProducts();
+    } catch (error) {
+      setError(error.response?.data?.message || "Failed to delete product");
+    }
+  };
+
+  const updateFilter = (setter) => (event) => {
+    setter(event.target.value);
+    setCurrentPage(1);
   };
 
   return (
@@ -93,39 +148,78 @@ function Products() {
         </div>
       )}
 
-      <SearchBar
-        value={searchValue}
-        onChange={(e) => setSearchValue(e.target.value)}
-        onSearch={handleSearch}
-      />
+      <div className="max-w-4xl mx-auto bg-white border border-gray-200 rounded-lg p-4">
+        <form onSubmit={applySearch} className="flex flex-col sm:flex-row gap-3 mb-4">
+          <input
+            type="text"
+            value={searchText}
+            onChange={(event) => setSearchText(event.target.value)}
+            placeholder="Search products..."
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:outline-none"
+          />
+          <button
+            type="submit"
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition duration-200"
+          >
+            Search
+          </button>
+        </form>
 
-      {/* ======== Modular Filters ======== */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <select
+            value={category}
+            onChange={updateFilter(setCategory)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:outline-none"
+          >
+            <option value="">All Categories</option>
+            {categories.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
 
-      <CategoryFilter
-        categories={categoryList}
-        selectedCategory={selectedCategory}
-        onCategorySelect={(cat) => {
-          setSelectedCategory(cat);
-          setCurrentPage(1);
-        }}
-      />
-      <SortFilter
-        sortValue={sortValue}
-        onSortChange={(val) => {
-          setSortValue(val);
-          setCurrentPage(1);
-        }}
-      />
-      <PriceFilter
-        minPrice={minPrice}
-        maxPrice={maxPrice}
-        onPriceChange={(type, val) => {
-          type === "min" ? setMinPrice(val) : setMaxPrice(val);
-          setCurrentPage(1);
-        }}
-      />
+          <select
+            value={sort}
+            onChange={updateFilter(setSort)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:outline-none"
+          >
+            <option value="-createdAt">Newest</option>
+            <option value="createdAt">Oldest</option>
+            <option value="price">Price Low to High</option>
+            <option value="-price">Price High to Low</option>
+            <option value="name">Name A to Z</option>
+            <option value="-name">Name Z to A</option>
+          </select>
 
-      {/* ======== Product List ======== */}
+          <input
+            type="number"
+            min="0"
+            value={minPrice}
+            onChange={updateFilter(setMinPrice)}
+            placeholder="Min price"
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:outline-none"
+          />
+
+          <input
+            type="number"
+            min="0"
+            value={maxPrice}
+            onChange={updateFilter(setMaxPrice)}
+            placeholder="Max price"
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:outline-none"
+          />
+
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="px-4 py-2 border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 rounded-lg transition duration-200"
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+
       {loading ? (
         <div className="mt-6">
           <Loader />
@@ -142,10 +236,7 @@ function Products() {
                   key={product._id}
                   product={product}
                   onEdit={() => setEditingProduct(product)}
-                  onDelete={async (id) => {
-                    if (window.confirm("Are you sure?"))
-                      await deleteProductById(id);
-                  }}
+                  onDelete={handleDelete}
                   canManage={isAdmin}
                 />
               ))
@@ -155,13 +246,12 @@ function Products() {
               </p>
             )}
           </div>
-          {pages > 1 && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={pages}
-              onPageChange={setCurrentPage}
-            />
-          )}
+
+          <Pagination
+            currentPage={currentPage}
+            totalPages={pages}
+            onPageChange={setCurrentPage}
+          />
         </>
       )}
 
@@ -170,10 +260,10 @@ function Products() {
           <ProductForm
             product={editingProduct}
             onSuccess={() => {
-              fetchProducts();
               setEditingProduct(null);
+              refreshProducts();
             }}
-            categories={categoryList}
+            categories={categories}
           />
         </Modal>
       )}

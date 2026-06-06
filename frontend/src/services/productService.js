@@ -1,25 +1,31 @@
 import api from "./api";
 
-// GET PRODUCT CATEGORIES
-export const getProductCategories = () => api.get("/products/categories");
-
-// GET PRODUCTS
-export const getProducts = (filters = {}) => {
-  return api.get("/products", {
-    params: filters
-  });
+export const getProductCategories = async () => {
+  const { data } = await api.get("/products/categories");
+  return data;
 };
 
-// GET PRODUCT BY ID
-export const getProductById = (id) => api.get(`/products/${id}`);
+export const getProducts = async (filters = {}) => {
+  const { data } = await api.get("/products", { params: filters });
+  return data;
+};
 
-// CREATE PRODUCT
-export const createProduct = (productData) =>
-  api.post("/products", productData);
+export const getProductById = async (id) => {
+  const { data } = await api.get(`/products/${id}`);
+  return data;
+};
 
-// UPDATE PRODUCT
-export const updateProduct = (id, updates) =>
-  api.put(`/products/${id}`, updates);
+export const createProduct = async (productData) => {
+  const { data } = await api.post("/products", productData);
+  return data;
+};
 
-// DELETE PRODUCT
-export const deleteProduct = (id) => api.delete(`/products/${id}`);
+export const updateProduct = async (id, updates) => {
+  const { data } = await api.put(`/products/${id}`, updates);
+  return data;
+};
+
+export const deleteProduct = async (id) => {
+  const { data } = await api.delete(`/products/${id}`);
+  return data;
+};

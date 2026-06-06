@@ -1,97 +1,129 @@
-const User = require('../models/userModel');
-//user ke liye token generate karna 
 const jwt = require('jsonwebtoken');
-const asyncHandler = require('../utils/asyncHandler');
+const User = require('../models/userModel');
 
-//helper function generate token
 const generateToken = (id) => {
-    return jwt.sign({id}, process.env.JWT_SECRET,{
-        expiresIn: '30d'
-    });
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: '30d',
+  });
 };
 
-// Create new user
-const createUser = asyncHandler(async (req,res) => {   
-    const { name, email, password} = req.body;
-    const existUser = await User.findOne({email});
-    if(existUser) {
-        res.status(400);
-        throw new Error('User already exist');
+const userResponse = (user, token) => {
+  const data = {
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    role: user.role,
+  };
+
+  if (token) {
+    data.token = token;
+  }
+
+  return data;
+};
+
+const isEmail = (value) => /^\S+@\S+\.\S+$/.test(value);
+
+const serverError = (res, error) => {
+  res.status(500).json({ message: error.message || 'Server error' });
+};
+
+const createUser = async (req, res) => {
+  try {
+    const name = String(req.body.name || '').trim();
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const password = String(req.body.password || '');
+
+    if (name.length < 4) {
+      return res.status(400).json({ message: 'Name must be at least 4 characters long' });
     }
-    const user = await User.create({name, email, password});
- 
-        //201 created status saath me user data aur jwt token
-        res.status(201).json({
-            _id: user._id,
-            name: user.name,
-            email: user.email,
-            phone: user.phone,
-            role: user.role,
-            token: generateToken(user._id),//jwt token generate karke send kiya
-        })
 
-});
+    if (!isEmail(email)) {
+      return res.status(400).json({ message: 'Invalid email address' });
+    }
 
-const loginUser = asyncHandler(async (req,res) => {
-        const {email, password} = req.body;
-        //find user in dataase by email
-        const user = await User.findOne({email}).select('+password');
-        //if user exisit and password match according to database by matchPassword compare enterd password to hash password
-        if(user && (await user.matchPassword(password))) {
-            //if match user data aur jwt token send karo
-            res.json({
-                _id: user._id,
-                name: user.name,
-                email: user.email,
-                phone: user.phone,
-                role: user.role,
-                token: generateToken(user._id),
-            })
-        } else {
-            res.status(401)
-            throw new Error('Invalid email or password');
-        }
+    if (password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters long' });
+    }
 
-})
+    const existUser = await User.findOne({ email });
+    if (existUser) {
+      return res.status(400).json({ message: 'User already exists' });
+    }
 
-// Get all users
-const getUserProfile = asyncHandler(async (req, res) => {
+    const user = await User.create({ name, email, password });
+    return res.status(201).json(userResponse(user, generateToken(user._id)));
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'User already exists' });
+    }
 
-    res.json(req.user); // direct use karo kyuki authmiddleware me user check hone ke baad hi yaha aayega 
+    return serverError(res, error);
+  }
+};
 
-});
+const loginUser = async (req, res) => {
+  try {
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const password = String(req.body.password || '');
 
-// Update logged-in user profile
-const updateUserProfile = asyncHandler(async (req, res) => {
+    if (!isEmail(email) || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+
+    const user = await User.findOne({ email }).select('+password');
+    if (!user || !(await user.matchPassword(password))) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    return res.json(userResponse(user, generateToken(user._id)));
+  } catch (error) {
+    return serverError(res, error);
+  }
+};
+
+const getUserProfile = async (req, res) => {
+  try {
+    return res.json(userResponse(req.user));
+  } catch (error) {
+    return serverError(res, error);
+  }
+};
+
+const updateUserProfile = async (req, res) => {
+  try {
     const user = await User.findById(req.user._id);
-    if(!user) {
-        res.status(404);
-        throw new Error('User not found');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
 
-    const { name, phone } = req.body;
-
-    if(name !== undefined) {
-        user.name = name;
+    if (req.body.name !== undefined) {
+      const name = String(req.body.name).trim();
+      if (!name) {
+        return res.status(400).json({ message: 'Name is required' });
+      }
+      user.name = name;
     }
-    if(phone !== undefined) {
-        user.phone = phone;
+
+    if (req.body.phone !== undefined) {
+      const phone = String(req.body.phone).trim();
+      if (phone && !/^\d+$/.test(phone)) {
+        return res.status(400).json({ message: 'Phone must contain digits only' });
+      }
+      user.phone = phone;
     }
 
     const updatedUser = await user.save();
+    return res.json(userResponse(updatedUser));
+  } catch (error) {
+    return serverError(res, error);
+  }
+};
 
-    res.json({
-        _id: updatedUser._id,
-        name: updatedUser.name,
-        email: updatedUser.email,
-        phone: updatedUser.phone,
-        role: updatedUser.role,
-    });
-});
-//
-
-
-// abhi hum direct req.user update aur delete kar rahe hai bina check kiye ki user hai ya nahi kyuki ye authmiddleware se kaam ho raha hai aur dusri chiz agar sab user me se kisi ek user ko update ya delete karna ho jo ki admin kar sakta hai tab hum req.params.id use karege jo ki product me use hota hai usually
-
-
-module.exports = { getUserProfile, updateUserProfile, createUser, loginUser };
+module.exports = {
+  createUser,
+  loginUser,
+  getUserProfile,
+  updateUserProfile,
+};
