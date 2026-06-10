@@ -1,4 +1,4 @@
-﻿# Product Hub MERN App 🚀
+﻿# Product Management MERN App 🚀
 
 A full-stack MERN application for product management with authentication, role-based access control, search, filtering, sorting, and pagination.
 
